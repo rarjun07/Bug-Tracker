@@ -80,6 +80,12 @@ alembic -c backend/alembic.ini upgrade head
 
 Issues are scoped to a project and receive sequential keys such as `APP-1`. Members can create, list, view, update, and delete issues with `POST`, `GET`, `GET`, `PATCH`, and `DELETE` under `/projects/{project_id}/issues`. Issue fields include type (`bug`, `task`, `feature`), status (`todo`, `in_progress`, `done`), priority (`low`, `medium`, `high`, `urgent`), reporter, and optional assignee. Assignees must already belong to the project. Apply the new issue schema with `alembic -c backend/alembic.ini upgrade head`.
 
+## Day 5: React issue workspace
+
+The frontend lives in `frontend/`. Start it with `cd frontend && npm install && npm run dev`; it expects the FastAPI API at `http://localhost:8000` by default. Set `VITE_API_URL` in a frontend `.env` file to change that address. The backend allows the local Vite origin (`http://localhost:5173`) through CORS by default; change `FRONTEND_ORIGIN` in the backend `.env` when the frontend runs elsewhere.
+
+The workspace supports account registration and sign-in, project selection, issue creation, and an issue list with live search. Create the first project from the backend Swagger docs at `http://localhost:8000/docs` after signing in; project creation UI is outside the Day 5 scope.
+
 ## Project layout
 
 ```text
@@ -91,5 +97,6 @@ backend/app/
   api/        authentication, project, and issue routes
   main.py     FastAPI app and health endpoints
 backend/alembic/ database migration history
+frontend/     React + TypeScript + Vite issue workspace
 compose.yaml  local PostgreSQL service
 ```
