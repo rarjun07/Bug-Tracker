@@ -33,7 +33,7 @@ export default function AuthPage({ onAuthenticated }: Props) {
         });
         localStorage.setItem("access_token", data.access_token);
         onAuthenticated();
-        navigate("/issues");
+        navigate("/dashboard");
       }
     } catch (submitError) {
       setError(apiErrorMessage(submitError));

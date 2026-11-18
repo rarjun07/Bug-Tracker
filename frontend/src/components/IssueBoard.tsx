@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   ArrowDownUp,
   Bug,
@@ -17,13 +17,14 @@ import {
 } from "lucide-react";
 import api, { apiErrorMessage } from "../api";
 import type { Issue, Project, ProjectMember } from "../types";
+import DashboardOverview from "./DashboardOverview";
 import IssueForm from "./IssueForm";
 
-type Props = { onLogout: () => void };
+type Props = { view: "dashboard" | "issues"; onLogout: () => void };
 
-export default function IssueBoard({ onLogout }: Props) {
+export default function IssueBoard({ view, onLogout }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(() => Number(localStorage.getItem("active_project_id")) || null);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -41,7 +42,11 @@ export default function IssueBoard({ onLogout }: Props) {
       .then(({ data }) => {
         if (!alive) return;
         setProjects(data);
-        setProjectId(data[0]?.id ?? null);
+        const savedId = Number(localStorage.getItem("active_project_id"));
+        const selectedId = data.some((project) => project.id === savedId) ? savedId : data[0]?.id ?? null;
+        setProjectId(selectedId);
+        if (selectedId === null) localStorage.removeItem("active_project_id");
+        else localStorage.setItem("active_project_id", String(selectedId));
       })
       .catch((requestError) => {
         if (alive) setError(apiErrorMessage(requestError));
@@ -80,7 +85,7 @@ export default function IssueBoard({ onLogout }: Props) {
     if (!term) return issues;
     return issues.filter((issue) => `${issue.issue_key} ${issue.title} ${issue.description ?? ""}`.toLowerCase().includes(term));
   }, [issues, search]);
-  const openCount = issues.filter((issue) => issue.status !== "done").length;
+  const inProgressCount = issues.filter((issue) => issue.status === "in_progress").length;
   const doneCount = issues.filter((issue) => issue.status === "done").length;
 
   function logout() {
@@ -106,7 +111,12 @@ export default function IssueBoard({ onLogout }: Props) {
           <span className="workspace-avatar">{activeProject?.key.slice(0, 2) ?? "BT"}</span>
           <label className="workspace-select-wrap">
             <span className="workspace-label">WORKSPACE</span>
-            <select aria-label="Choose project" value={projectId ?? ""} onChange={(event) => setProjectId(Number(event.target.value) || null)} disabled={!projects.length}>
+            <select aria-label="Choose project" value={projectId ?? ""} onChange={(event) => {
+              const selectedId = Number(event.target.value) || null;
+              setProjectId(selectedId);
+              if (selectedId === null) localStorage.removeItem("active_project_id");
+              else localStorage.setItem("active_project_id", String(selectedId));
+            }} disabled={!projects.length}>
               {projects.length === 0 ? <option value="">No project yet</option> : projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}
             </select>
             <ChevronDown className="select-chevron" size={14} />
@@ -114,8 +124,8 @@ export default function IssueBoard({ onLogout }: Props) {
         </div>
         <div className="nav-section-label">WORKSPACE</div>
         <nav className="side-nav" aria-label="Main navigation">
-          <a className="nav-item nav-item-active" href="#issues" onClick={(event) => event.preventDefault()}><ClipboardList size={17} /><span>Issues</span><span className="nav-count">{issues.length}</span></a>
-          <div className="nav-item nav-item-muted"><FolderKanban size={17} /><span>Projects</span><span className="soon-label">SOON</span></div>
+          <NavLink onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`} to="/dashboard"><FolderKanban size={17} /><span>Dashboard</span></NavLink>
+          <NavLink onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`} to="/issues"><ClipboardList size={17} /><span>Issues</span><span className="nav-count">{issues.length}</span></NavLink>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-tip"><Sparkles size={16} /><span>Keep your team's next step in sight.</span></div>
@@ -138,21 +148,29 @@ export default function IssueBoard({ onLogout }: Props) {
           <div className="page-heading-row">
             <div>
               <div className="eyebrow page-eyebrow">PROJECT TRACKER <span className="heading-dot">•</span> {activeProject?.key ?? "YOUR WORKSPACE"}</div>
-              <h1>Issues <span className="heading-count">{issues.length}</span></h1>
-              <p className="page-subtitle">Keep the details clear and the work moving.</p>
+              <h1>{view === "dashboard" ? "Project dashboard" : "Issues"} <span className="heading-count">{issues.length}</span></h1>
+              <p className="page-subtitle">{view === "dashboard" ? "A clear view of your team's work and what's next." : "Keep the details clear and the work moving."}</p>
             </div>
             <button className="button button-primary create-button" disabled={!activeProject} onClick={() => setShowForm(true)}><CirclePlus size={17} /> New issue</button>
           </div>
 
           <div className="summary-grid">
             <div className="summary-card"><span className="summary-icon summary-icon-blue"><ClipboardList size={17} /></span><div><span>Total issues</span><strong>{issues.length}</strong></div><span className="summary-caption">in this project</span></div>
-            <div className="summary-card"><span className="summary-icon summary-icon-amber"><CircleDashed size={17} /></span><div><span>In progress</span><strong>{openCount}</strong></div><span className="summary-caption">still moving</span></div>
+            <div className="summary-card"><span className="summary-icon summary-icon-amber"><CircleDashed size={17} /></span><div><span>In progress</span><strong>{inProgressCount}</strong></div><span className="summary-caption">currently active</span></div>
             <div className="summary-card"><span className="summary-icon summary-icon-green"><CheckCircle2 size={17} /></span><div><span>Completed</span><strong>{doneCount}</strong></div><span className="summary-caption">across the team</span></div>
           </div>
 
           {error && <div className="notice notice-error page-notice"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss error"><X size={16} /></button></div>}
 
-          <section className="issues-panel">
+          {view === "dashboard" && activeProject && !loadingProjects && !loadingIssues ? (
+            <DashboardOverview project={activeProject} issues={issues} members={members} />
+          ) : view === "dashboard" && loadingProjects ? (
+            <section className="issues-panel"><div className="loading-state"><span className="loading-spinner" />Loading your dashboard…</div></section>
+          ) : view === "dashboard" && !projects.length ? (
+            <section className="issues-panel"><div className="empty-state"><span className="empty-icon"><FolderKanban size={22} /></span><h3>Create your first project</h3><p>Projects organize issues and teams. Create one from the API docs, then come back here.</p><a className="button button-secondary" href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`} target="_blank" rel="noreferrer">Open API docs</a></div></section>
+          ) : view === "dashboard" ? (
+            <section className="issues-panel"><div className="loading-state"><span className="loading-spinner" />Loading project details…</div></section>
+          ) : <section className="issues-panel">
             <div className="panel-header">
               <div><h2>All issues</h2><p>{activeProject ? `Issues in ${activeProject.name}` : "Choose a project to get started"}</p></div>
               <div className="panel-tools">
@@ -195,8 +213,8 @@ export default function IssueBoard({ onLogout }: Props) {
               </div>
             )}
             {visibleIssues.length > 0 && <div className="panel-footer"><span>Showing {visibleIssues.length} of {issues.length} issues</span><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
-          </section>
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 5</span></footer>
+          </section>}
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 6</span></footer>
         </div>
       </main>
 

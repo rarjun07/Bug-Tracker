@@ -15,14 +15,22 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<AuthPage onAuthenticated={refreshSession} />} />
       <Route
-        path="/issues"
+        path="/dashboard"
         element={
           <Protected>
-            <IssueBoard onLogout={refreshSession} />
+            <IssueBoard view="dashboard" onLogout={refreshSession} />
           </Protected>
         }
       />
-      <Route path="*" element={<Navigate to={localStorage.getItem("access_token") ? "/issues" : "/login"} replace />} />
+      <Route
+        path="/issues"
+        element={
+          <Protected>
+            <IssueBoard view="issues" onLogout={refreshSession} />
+          </Protected>
+        }
+      />
+      <Route path="*" element={<Navigate to={localStorage.getItem("access_token") ? "/dashboard" : "/login"} replace />} />
     </Routes>
   );
 }

@@ -86,6 +86,10 @@ The frontend lives in `frontend/`. Start it with `cd frontend && npm install && 
 
 The workspace supports account registration and sign-in, project selection, issue creation, and an issue list with live search. Create the first project from the backend Swagger docs at `http://localhost:8000/docs` after signing in; project creation UI is outside the Day 5 scope.
 
+## Day 6: project dashboard and responsive layout
+
+The `/dashboard` page summarizes issue status and priority, shows recently created issues, and lists the project team. Switch between Dashboard and Issues in the sidebar; the selected project is remembered in the browser. The sidebar collapses on smaller screens, issue tables scroll horizontally, and dashboard panels stack for mobile layouts.
+
 ## Project layout
 
 ```text
