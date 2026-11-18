@@ -4,9 +4,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
 from app.db.session import engine
+from app.api.routes.auth import router as auth_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
+app.include_router(auth_router)
 
 
 @app.get("/health", tags=["health"])

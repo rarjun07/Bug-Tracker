@@ -48,7 +48,23 @@ Requirements: Python 3.11+, Docker Compose, and Git.
 
 5. Open `http://127.0.0.1:8000/docs`. The health endpoints are `/health` and `/health/db`.
 
-SQLAlchemy is configured for PostgreSQL and a shared declarative model base is ready. Alembic is included as a dependency; migration configuration and the first schema migration will be added with the first database models.
+SQLAlchemy is configured for PostgreSQL and the shared declarative base is in place. Alembic configuration and the initial user schema migration were added with Day 2.
+
+## Day 2: accounts and authentication
+
+Before starting the API, set a private JWT signing key in `.env`. Generate one with:
+
+```bash
+openssl rand -hex 32
+```
+
+Paste the output as `JWT_SECRET_KEY` in `.env`. Then apply the user schema migration:
+
+```bash
+alembic -c backend/alembic.ini upgrade head
+```
+
+The authentication routes are `POST /auth/register`, `POST /auth/token`, and `GET /auth/me`. Registration accepts JSON; token login accepts OAuth2 form fields (`username` may contain a username or email, plus `password`). Protected routes can use the `get_current_user` dependency. Passwords are stored as Argon2 hashes, and only a user's public fields are returned by the API.
 
 ## Project layout
 
