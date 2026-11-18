@@ -66,12 +66,26 @@ alembic -c backend/alembic.ini upgrade head
 
 The authentication routes are `POST /auth/register`, `POST /auth/token`, and `GET /auth/me`. Registration accepts JSON; token login accepts OAuth2 form fields (`username` may contain a username or email, plus `password`). Protected routes can use the `get_current_user` dependency. Passwords are stored as Argon2 hashes, and only a user's public fields are returned by the API.
 
+## Day 3: projects and teams
+
+Create a project with `POST /projects` using a name, uppercase project key, and optional description. The creator is automatically added as a project admin. `GET /projects` lists the signed-in user's projects; project details and team routes require membership. Project admins can list, add, update the role of, and remove team members using `/projects/{project_id}/members`. Roles are `admin`, `developer`, and `viewer`, and every project must retain at least one admin.
+
+Apply the project and membership schema after pulling Day 3:
+
+```bash
+alembic -c backend/alembic.ini upgrade head
+```
+
 ## Project layout
 
 ```text
 backend/app/
   core/       settings
   db/         SQLAlchemy base, engine, and session dependency
+  models/     users, projects, and memberships
+  schemas/    request and response models
+  api/        authentication and project routes
   main.py     FastAPI app and health endpoints
+backend/alembic/ database migration history
 compose.yaml  local PostgreSQL service
 ```

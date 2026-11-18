@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.project import ProjectMember
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
@@ -44,3 +45,36 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: DbSessio
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return user
+
+
+def get_project_member(
+    project_id: int,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ProjectMember:
+    member = db.scalar(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == current_user.id,
+        )
+    )
+    if member is None:
+        # Hide projects from users who have not been added to their team.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return member
+
+
+def get_project_admin(
+    member: Annotated[ProjectMember, Depends(get_project_member)],
+) -> ProjectMember:
+    if member.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Project admin role required",
+        )
+    return member
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+ProjectMemberAccess = Annotated[ProjectMember, Depends(get_project_member)]
+ProjectAdmin = Annotated[ProjectMember, Depends(get_project_admin)]
