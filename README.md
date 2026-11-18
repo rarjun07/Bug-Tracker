@@ -76,15 +76,19 @@ Apply the project and membership schema after pulling Day 3:
 alembic -c backend/alembic.ini upgrade head
 ```
 
+## Day 4: issue tracking
+
+Issues are scoped to a project and receive sequential keys such as `APP-1`. Members can create, list, view, update, and delete issues with `POST`, `GET`, `GET`, `PATCH`, and `DELETE` under `/projects/{project_id}/issues`. Issue fields include type (`bug`, `task`, `feature`), status (`todo`, `in_progress`, `done`), priority (`low`, `medium`, `high`, `urgent`), reporter, and optional assignee. Assignees must already belong to the project. Apply the new issue schema with `alembic -c backend/alembic.ini upgrade head`.
+
 ## Project layout
 
 ```text
 backend/app/
   core/       settings
   db/         SQLAlchemy base, engine, and session dependency
-  models/     users, projects, and memberships
+  models/     users, projects, memberships, and issues
   schemas/    request and response models
-  api/        authentication and project routes
+  api/        authentication, project, and issue routes
   main.py     FastAPI app and health endpoints
 backend/alembic/ database migration history
 compose.yaml  local PostgreSQL service

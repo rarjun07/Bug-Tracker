@@ -6,11 +6,13 @@ from app.core.config import get_settings
 from app.db.session import engine
 from app.api.routes.auth import router as auth_router
 from app.api.routes.projects import router as projects_router
+from app.api.routes.issues import router as issues_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
 app.include_router(auth_router)
 app.include_router(projects_router)
+app.include_router(issues_router)
 
 
 @app.get("/health", tags=["health"])
