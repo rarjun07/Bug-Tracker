@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -35,5 +35,8 @@ def database_health() -> dict[str, str]:
             connection.execute(text("SELECT 1"))
     except SQLAlchemyError as exc:
         # Do not leak connection details or credentials through a health response.
-        raise RuntimeError("Database connection failed") from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection failed",
+        ) from exc
     return {"status": "ok", "database": "connected"}

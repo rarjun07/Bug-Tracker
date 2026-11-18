@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "postgresql+psycopg://bugtracker:bugtracker@localhost:5432/bugtracker"
     jwt_secret_key: SecretStr = SecretStr("")
-    jwt_access_token_expire_minutes: int = 30
+    jwt_access_token_expire_minutes: int = Field(default=30, gt=0, le=1440)
     frontend_origin: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

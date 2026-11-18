@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
@@ -44,7 +45,7 @@ def _ensure_assignee_is_member(db: DbSession, project_id: int, assignee_id: int 
     membership = db.get(ProjectMember, (project_id, assignee_id))
     if membership is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail="Assignee must be a member of this project",
         )
 
@@ -123,7 +124,7 @@ def update_issue(
     for field in ("title", "issue_type", "status", "priority"):
         if field in changes and changes[field] is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 detail=f"{field} cannot be null",
             )
     if "assignee_id" in changes:
@@ -134,7 +135,7 @@ def update_issue(
             value = value.strip()
             if not value:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     detail="title cannot be blank",
                 )
         if field in {"issue_type", "status", "priority"} and value is not None:

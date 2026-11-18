@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
+from fastapi import HTTPException, status
 from pwdlib import PasswordHash
 
 from app.core.config import get_settings
@@ -22,11 +23,19 @@ def verify_unknown_user_password(plain_password: str) -> None:
     password_hash.verify(plain_password, _dummy_password_hash)
 
 
+def get_jwt_secret_key() -> str:
+    secret_key = get_settings().jwt_secret_key.get_secret_value()
+    if len(secret_key) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        )
+    return secret_key
+
+
 def create_access_token(subject: str) -> str:
     settings = get_settings()
-    secret_key = settings.jwt_secret_key.get_secret_value()
-    if len(secret_key) < 32:
-        raise RuntimeError("JWT_SECRET_KEY must be set to at least 32 characters")
+    secret_key = get_jwt_secret_key()
 
     expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.jwt_access_token_expire_minutes

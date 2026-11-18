@@ -90,6 +90,17 @@ The workspace supports account registration and sign-in, project selection, issu
 
 The `/dashboard` page summarizes issue status and priority, shows recently created issues, and lists the project team. Switch between Dashboard and Issues in the sidebar; the selected project is remembered in the browser. The sidebar collapses on smaller screens, issue tables scroll horizontally, and dashboard panels stack for mobile layouts.
 
+## Day 7: API checks and refactoring
+
+Install the development dependencies and run the API suite from the repository root:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The API tests use a temporary SQLite database and cover registration, login, project membership, issue CRUD, sequential issue keys, and membership boundaries. They do not need the local PostgreSQL container.
+
 ## Project layout
 
 ```text

@@ -7,7 +7,7 @@ from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.security import get_jwt_secret_key
 from app.db.session import get_db
 from app.models.project import ProjectMember
 from app.models.user import User
@@ -22,13 +22,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: DbSessio
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    settings = get_settings()
-    secret_key = settings.jwt_secret_key.get_secret_value()
-    if len(secret_key) < 32:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured",
-        )
+    secret_key = get_jwt_secret_key()
 
     try:
         payload = jwt.decode(token, secret_key, algorithms=["HS256"])
