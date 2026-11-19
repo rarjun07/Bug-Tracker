@@ -11,6 +11,7 @@ import {
   FolderKanban,
   LogOut,
   Menu,
+  MessageSquare,
   Search,
   Sparkles,
   X,
@@ -20,6 +21,7 @@ import type { Issue, Project, ProjectMember } from "../types";
 import DashboardOverview from "./DashboardOverview";
 import IssueForm from "./IssueForm";
 import KanbanBoard from "./KanbanBoard";
+import IssueDiscussion from "./IssueDiscussion";
 
 type Props = { view: "dashboard" | "issues" | "kanban"; onLogout: () => void };
 
@@ -31,6 +33,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [discussionIssue, setDiscussionIssue] = useState<Issue | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -214,7 +217,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
             ) : (
               <div className="issue-table-wrap">
                 <table className="issue-table">
-                  <thead><tr><th>Issue</th><th>Type</th><th>Status</th><th>Priority</th><th>Assignee</th></tr></thead>
+                  <thead><tr><th>Issue</th><th>Type</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Discussion</th></tr></thead>
                   <tbody>{visibleIssues.map((issue) => {
                     const assignee = members.find((member) => member.user_id === issue.assignee_id);
                     return <tr key={issue.id}>
@@ -223,6 +226,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
                       <td><span className={`status-pill status-${issue.status}`}><i />{issue.status.replace("_", " ")}</span></td>
                       <td><span className={`priority-label priority-${issue.priority}`}><i />{issue.priority}</span></td>
                       <td>{assignee ? <span className="assignee-cell"><span className="mini-avatar">{assignee.username.slice(0, 1).toUpperCase()}</span>{assignee.username}</span> : <span className="unassigned">Unassigned</span>}</td>
+                      <td><button className="discussion-open-button" onClick={() => setDiscussionIssue(issue)}><MessageSquare size={14} /> Open</button></td>
                     </tr>;
                   })}</tbody>
                 </table>
@@ -230,11 +234,12 @@ export default function IssueBoard({ view, onLogout }: Props) {
             )}
             {visibleIssues.length > 0 && <div className="panel-footer"><span>Showing {visibleIssues.length} of {issues.length} issues</span><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
           </section>}
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 8</span></footer>
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 9</span></footer>
         </div>
       </main>
 
       {showForm && activeProject && <IssueForm project={activeProject} members={members} onClose={() => setShowForm(false)} onCreated={addIssue} />}
+      {discussionIssue && <IssueDiscussion issue={discussionIssue} onClose={() => setDiscussionIssue(null)} />}
     </div>
   );
 }

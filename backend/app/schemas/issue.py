@@ -74,3 +74,26 @@ class IssueRead(BaseModel):
     assignee_id: int | None
     created_at: datetime
     updated_at: datetime
+
+
+class IssueCommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=5000)
+    parent_id: int | None = None
+
+    @field_validator("content")
+    @classmethod
+    def trim_content(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("comment cannot be blank")
+        return value
+
+
+class IssueCommentRead(BaseModel):
+    id: int
+    issue_id: int
+    author_id: int
+    author_username: str
+    parent_id: int | None
+    content: str
+    created_at: datetime

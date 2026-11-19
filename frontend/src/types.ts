@@ -27,6 +27,16 @@ export type Issue = {
   updated_at: string;
 };
 
+export type IssueComment = {
+  id: number;
+  issue_id: number;
+  author_id: number;
+  author_username: string;
+  parent_id: number | null;
+  content: string;
+  created_at: string;
+};
+
 export type ProjectMember = {
   user_id: number;
   username: string;

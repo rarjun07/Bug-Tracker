@@ -5,9 +5,16 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import select, update
 
 from app.api.deps import CurrentUser, DbSession, ProjectMemberAccess
+from app.models.comment import IssueComment
 from app.models.issue import Issue
 from app.models.project import Project, ProjectMember
-from app.schemas.issue import IssueCreate, IssueRead, IssueUpdate
+from app.schemas.issue import (
+    IssueCommentCreate,
+    IssueCommentRead,
+    IssueCreate,
+    IssueRead,
+    IssueUpdate,
+)
 
 router = APIRouter(prefix="/projects/{project_id}/issues", tags=["issues"])
 
@@ -37,6 +44,18 @@ def _get_issue(db: DbSession, project_id: int, issue_id: int) -> Issue:
     if issue is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
     return issue
+
+
+def _comment_read(comment: IssueComment) -> IssueCommentRead:
+    return IssueCommentRead(
+        id=comment.id,
+        issue_id=comment.issue_id,
+        author_id=comment.author_id,
+        author_username=comment.author.username,
+        parent_id=comment.parent_id,
+        content=comment.content,
+        created_at=comment.created_at,
+    )
 
 
 def _ensure_assignee_is_member(db: DbSession, project_id: int, assignee_id: int | None) -> None:
@@ -157,3 +176,59 @@ def delete_issue(
     db.delete(issue)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{issue_id}/comments", response_model=list[IssueCommentRead])
+def list_issue_comments(
+    issue_id: int, project_member: ProjectMemberAccess, db: DbSession
+) -> list[IssueCommentRead]:
+    _get_issue(db, project_member.project_id, issue_id)
+    comments = db.scalars(
+        select(IssueComment)
+        .where(IssueComment.issue_id == issue_id)
+        .order_by(IssueComment.created_at, IssueComment.id)
+    ).all()
+    return [_comment_read(comment) for comment in comments]
+
+
+@router.post(
+    "/{issue_id}/comments",
+    response_model=IssueCommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_issue_comment(
+    issue_id: int,
+    comment_in: IssueCommentCreate,
+    project_member: ProjectMemberAccess,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> IssueCommentRead:
+    _get_issue(db, project_member.project_id, issue_id)
+    if comment_in.parent_id is not None:
+        parent = db.scalar(
+            select(IssueComment).where(
+                IssueComment.id == comment_in.parent_id,
+                IssueComment.issue_id == issue_id,
+            )
+        )
+        if parent is None:
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail="Reply target must be a comment on this issue",
+            )
+        if parent.parent_id is not None:
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail="Replies can only be added to top-level comments",
+            )
+
+    comment = IssueComment(
+        issue_id=issue_id,
+        author_id=current_user.id,
+        parent_id=comment_in.parent_id,
+        content=comment_in.content,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _comment_read(comment)

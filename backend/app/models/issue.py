@@ -64,3 +64,6 @@ class Issue(Base):
     project: Mapped[Project] = relationship(back_populates="issues")
     reporter: Mapped[User] = relationship(foreign_keys=[reporter_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
+    comments: Mapped[list["IssueComment"]] = relationship(
+        back_populates="issue", cascade="all, delete-orphan"
+    )
