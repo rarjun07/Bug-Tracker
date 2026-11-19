@@ -30,6 +30,14 @@ export default function App() {
           </Protected>
         }
       />
+      <Route
+        path="/kanban"
+        element={
+          <Protected>
+            <IssueBoard view="kanban" onLogout={refreshSession} />
+          </Protected>
+        }
+      />
       <Route path="*" element={<Navigate to={localStorage.getItem("access_token") ? "/dashboard" : "/login"} replace />} />
     </Routes>
   );

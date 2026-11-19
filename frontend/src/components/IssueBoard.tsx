@@ -19,8 +19,9 @@ import api, { apiErrorMessage } from "../api";
 import type { Issue, Project, ProjectMember } from "../types";
 import DashboardOverview from "./DashboardOverview";
 import IssueForm from "./IssueForm";
+import KanbanBoard from "./KanbanBoard";
 
-type Props = { view: "dashboard" | "issues"; onLogout: () => void };
+type Props = { view: "dashboard" | "issues" | "kanban"; onLogout: () => void };
 
 export default function IssueBoard({ view, onLogout }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -99,6 +100,18 @@ export default function IssueBoard({ view, onLogout }: Props) {
     setShowForm(false);
   }
 
+  async function updateIssueStatus(issueId: number, status: Issue["status"]) {
+    const previous = issues.find((issue) => issue.id === issueId);
+    if (!previous || previous.status === status) return;
+    setIssues((existing) => existing.map((issue) => issue.id === issueId ? { ...issue, status } : issue));
+    try {
+      await api.patch(`/projects/${previous.project_id}/issues/${issueId}`, { status });
+    } catch (requestError) {
+      setIssues((existing) => existing.map((issue) => issue.id === issueId && issue.status === status ? { ...issue, status: previous.status } : issue));
+      throw requestError;
+    }
+  }
+
   return (
     <div className="workspace-shell">
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
@@ -126,6 +139,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
         <nav className="side-nav" aria-label="Main navigation">
           <NavLink onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`} to="/dashboard"><FolderKanban size={17} /><span>Dashboard</span></NavLink>
           <NavLink onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`} to="/issues"><ClipboardList size={17} /><span>Issues</span><span className="nav-count">{issues.length}</span></NavLink>
+          <NavLink onClick={() => setSidebarOpen(false)} className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`} to="/kanban"><FolderKanban size={17} /><span>Kanban</span></NavLink>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-tip"><Sparkles size={16} /><span>Keep your team's next step in sight.</span></div>
@@ -148,8 +162,8 @@ export default function IssueBoard({ view, onLogout }: Props) {
           <div className="page-heading-row">
             <div>
               <div className="eyebrow page-eyebrow">PROJECT TRACKER <span className="heading-dot">•</span> {activeProject?.key ?? "YOUR WORKSPACE"}</div>
-              <h1>{view === "dashboard" ? "Project dashboard" : "Issues"} <span className="heading-count">{issues.length}</span></h1>
-              <p className="page-subtitle">{view === "dashboard" ? "A clear view of your team's work and what's next." : "Keep the details clear and the work moving."}</p>
+              <h1>{view === "dashboard" ? "Project dashboard" : view === "kanban" ? "Kanban board" : "Issues"} <span className="heading-count">{issues.length}</span></h1>
+              <p className="page-subtitle">{view === "dashboard" ? "A clear view of your team's work and what's next." : view === "kanban" ? "See every issue and move work through the project." : "Keep the details clear and the work moving."}</p>
             </div>
             <button className="button button-primary create-button" disabled={!activeProject} onClick={() => setShowForm(true)}><CirclePlus size={17} /> New issue</button>
           </div>
@@ -170,6 +184,8 @@ export default function IssueBoard({ view, onLogout }: Props) {
             <section className="issues-panel"><div className="empty-state"><span className="empty-icon"><FolderKanban size={22} /></span><h3>Create your first project</h3><p>Projects organize issues and teams. Create one from the API docs, then come back here.</p><a className="button button-secondary" href={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/docs`} target="_blank" rel="noreferrer">Open API docs</a></div></section>
           ) : view === "dashboard" ? (
             <section className="issues-panel"><div className="loading-state"><span className="loading-spinner" />Loading project details…</div></section>
+          ) : view === "kanban" ? (
+            <KanbanBoard issues={visibleIssues} members={members} loading={loadingProjects || loadingIssues} onStatusChange={updateIssueStatus} onCreateIssue={() => setShowForm(true)} />
           ) : <section className="issues-panel">
             <div className="panel-header">
               <div><h2>All issues</h2><p>{activeProject ? `Issues in ${activeProject.name}` : "Choose a project to get started"}</p></div>
@@ -214,7 +230,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
             )}
             {visibleIssues.length > 0 && <div className="panel-footer"><span>Showing {visibleIssues.length} of {issues.length} issues</span><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
           </section>}
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 6</span></footer>
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 8</span></footer>
         </div>
       </main>
 
