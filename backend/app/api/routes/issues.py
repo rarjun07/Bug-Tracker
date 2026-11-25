@@ -2,7 +2,8 @@ from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import select, update
+from sqlalchemy import String, cast, func, or_, select, update
+from sqlalchemy.orm import contains_eager
 
 from app.api.deps import CurrentUser, DbSession, ProjectMemberAccess
 from app.models.comment import IssueComment
@@ -13,6 +14,9 @@ from app.schemas.issue import (
     IssueCommentRead,
     IssueCreate,
     IssueRead,
+    IssuePriority,
+    IssueStatus,
+    IssueType,
     IssueUpdate,
 )
 
@@ -110,13 +114,55 @@ def create_issue(
 def list_issues(
     project_member: ProjectMemberAccess,
     db: DbSession,
+    response: Response,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+    status_filter: Annotated[IssueStatus | None, Query(alias="status")] = None,
+    issue_type: IssueType | None = None,
+    priority: IssuePriority | None = None,
+    assignee_id: Annotated[int | None, Query(ge=1)] = None,
+    unassigned: bool = False,
+    sort: Annotated[str, Query(pattern="^(newest|oldest)$")] = "newest",
 ) -> list[IssueRead]:
-    issues = db.scalars(
+    conditions = [Issue.project_id == project_member.project_id]
+    if search and search.strip():
+        term = search.strip()
+        issue_key = Project.key.concat("-").concat(cast(Issue.issue_number, String))
+        conditions.append(
+            or_(
+                func.lower(Issue.title).contains(term.lower(), autoescape=True),
+                func.lower(Issue.description).contains(term.lower(), autoescape=True),
+                func.lower(issue_key).contains(term.lower(), autoescape=True),
+            )
+        )
+    if status_filter is not None:
+        conditions.append(Issue.status == status_filter.value)
+    if issue_type is not None:
+        conditions.append(Issue.issue_type == issue_type.value)
+    if priority is not None:
+        conditions.append(Issue.priority == priority.value)
+    if assignee_id is not None:
+        conditions.append(Issue.assignee_id == assignee_id)
+    if unassigned:
+        conditions.append(Issue.assignee_id.is_(None))
+
+    base_query = (
         select(Issue)
-        .where(Issue.project_id == project_member.project_id)
-        .order_by(Issue.issue_number.desc())
+        .join(Project, Issue.project_id == Project.id)
+        .options(contains_eager(Issue.project))
+        .where(*conditions)
+    )
+    total = db.scalar(
+        select(func.count(Issue.id))
+        .join(Project, Issue.project_id == Project.id)
+        .where(*conditions)
+    ) or 0
+    response.headers["X-Total-Count"] = str(total)
+    ordering = Issue.issue_number.asc() if sort == "oldest" else Issue.issue_number.desc()
+    issues = db.scalars(
+        base_query
+        .order_by(ordering)
         .limit(limit)
         .offset(offset)
     ).all()

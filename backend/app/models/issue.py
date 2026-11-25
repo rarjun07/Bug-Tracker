@@ -32,6 +32,9 @@ class Issue(Base):
             "priority IN ('low', 'medium', 'high', 'urgent')", name="ck_issues_priority"
         ),
         Index("ix_issues_project_status", "project_id", "status"),
+        Index("ix_issues_project_type", "project_id", "issue_type"),
+        Index("ix_issues_project_priority", "project_id", "priority"),
+        Index("ix_issues_project_assignee", "project_id", "assignee_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
