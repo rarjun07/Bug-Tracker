@@ -21,6 +21,56 @@ A Jira inspired issue tracker built with a FastAPI backend, PostgreSQL database,
 | 13 | UI polish and documentation |
 | 14 | Final verification and demo |
 
+## Run locally
+
+You need Python 3.11 or newer, Node.js with npm, and Docker Compose.
+
+1. Create the backend environment file and generate a private JWT key:
+
+   ```bash
+   cp .env.example .env
+   openssl rand -hex 32
+   ```
+
+   Paste the generated value into `JWT_SECRET_KEY` in `.env`.
+2. Start the local PostgreSQL database:
+
+   ```bash
+   docker compose up -d db
+   ```
+3. Install backend packages, apply migrations, and start FastAPI from the repository root:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   alembic -c backend/alembic.ini upgrade head
+   uvicorn app.main:app --reload --app-dir backend
+   ```
+4. In a second terminal, start React:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+Open the frontend at `http://localhost:5173` and the API reference at `http://localhost:8000/docs`. Set `VITE_API_URL` in `frontend/.env` to change the frontend's API address; `FRONTEND_ORIGIN` in the root `.env` controls allowed browser origins and can contain comma-separated origins. Create the first project with `POST /projects` in the API reference after signing in; use its **Authorize** button with the access token from `POST /auth/token`.
+
+## Features and project roles
+
+- Project scoped issues with types, priorities, statuses, and team assignments.
+- Search, filtering, pagination, Kanban status updates, and threaded issue discussion.
+- Project roles:
+
+  | Role | Issue access |
+  | --- | --- |
+  | Admin | Create, edit, comment, and delete issues; manage project members |
+  | Developer | Create and edit issues, update status, and comment |
+  | Viewer | Read issues and discussions |
+
+Issue create, update, delete, and comment permissions are checked by the API as well as reflected in the interface.
+
 ## Day 1: local setup
 
 Requirements: Python 3.11+, Docker Compose, and Git.
@@ -78,7 +128,7 @@ alembic -c backend/alembic.ini upgrade head
 
 ## Day 4: issue tracking
 
-Issues are scoped to a project and receive sequential keys such as `APP-1`. Members can create, list, view, update, and delete issues with `POST`, `GET`, `GET`, `PATCH`, and `DELETE` under `/projects/{project_id}/issues`. Issue fields include type (`bug`, `task`, `feature`), status (`todo`, `in_progress`, `done`), priority (`low`, `medium`, `high`, `urgent`), reporter, and optional assignee. Assignees must already belong to the project. Apply the new issue schema with `alembic -c backend/alembic.ini upgrade head`.
+Issues are scoped to a project and receive sequential keys such as `APP-1`. Issue routes support create, list, detail, update, and delete operations under `/projects/{project_id}/issues`. Issue fields include type (`bug`, `task`, `feature`), status (`todo`, `in_progress`, `done`), priority (`low`, `medium`, `high`, `urgent`), reporter, and optional assignee. Assignees must already belong to the project. Current role permissions are described under [Features and project roles](#features-and-project-roles). Apply the issue schema with `alembic -c backend/alembic.ini upgrade head`.
 
 ## Day 5: React issue workspace
 
@@ -100,6 +150,22 @@ python -m pytest
 ```
 
 The API tests use a temporary SQLite database and cover registration, login, project membership, issue CRUD, sequential issue keys, and membership boundaries. They do not need the local PostgreSQL container.
+
+## Day 8: Kanban board
+
+The Kanban view groups project issues by status. Admins and developers can drag cards or choose a status; viewers see the board in read-only mode.
+
+## Day 9: issue discussion
+
+Issue discussions support top-level comments and one level of threaded replies. Project members can read comments; admins and developers can post and reply.
+
+## Day 10: search and filters
+
+The Issues view supports server-side search by issue key, title, and description; filters by status, type, priority, and assignee; sort order; and paginated results. The Kanban view applies filters and shows up to 100 matching issues.
+
+## Day 11: edit/delete authorization
+
+The backend enforces role permissions for issue creation, updates, comments, and deletion. Admins and developers can create and update issues and comment; only admins can delete issues. Viewers can read issues and discussions.
 
 ## Day 12: deploy the backend to Railway
 
@@ -136,4 +202,5 @@ backend/alembic/ database migration history
 frontend/     React + TypeScript + Vite issue workspace
 compose.yaml  local PostgreSQL service
 Dockerfile   production FastAPI container
+.env.example safe local backend configuration template
 ```

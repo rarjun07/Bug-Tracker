@@ -7,6 +7,10 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .62; }
 a { color: inherit; text-decoration: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7180efaa; outline-offset: 2px; }
+.search-box:focus-within { border-color: #8992eb; box-shadow: 0 0 0 3px #5865df16; }
+.skip-link { position: fixed; z-index: 30; top: 10px; left: 10px; transform: translateY(-160%); border-radius: 7px; padding: 10px 13px; color: white; background: #303b68; font-size: 12px; font-weight: 650; }
+.skip-link:focus { transform: translateY(0); }
 
 .brand-lockup { display: flex; align-items: center; gap: 10px; color: #202944; font-size: 17px; font-weight: 760; letter-spacing: -.045em; }
 .brand-mark { width: 33px; height: 33px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; color: white; background: linear-gradient(145deg, #6674f5, #4854d7); box-shadow: 0 5px 12px #5361d933; }
@@ -329,6 +333,10 @@ a { color: inherit; text-decoration: none; }
 .spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 
 @media (max-width: 1100px) {
   .page-content { padding: 31px 27px 20px; }

@@ -188,6 +188,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
 
   return (
     <div className="workspace-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand-lockup sidebar-brand">
@@ -219,14 +220,14 @@ export default function IssueBoard({ view, onLogout }: Props) {
         <div className="sidebar-bottom">
           <div className="sidebar-tip"><Sparkles size={16} /><span>Keep your team's next step in sight.</span></div>
           <button className="profile-button" onClick={logout}>
-            <span className="profile-avatar">U</span>
-            <span className="profile-meta"><strong>Your account</strong><small>Signed in</small></span>
+            <span className="profile-avatar">{currentMember?.username.slice(0, 1).toUpperCase() ?? "U"}</span>
+            <span className="profile-meta"><strong>{currentMember?.username ?? "Your account"}</strong><small>{currentMember ? `${currentMember.role} · project role` : "Signed in"}</small></span>
             <LogOut size={16} />
           </button>
         </div>
       </aside>
 
-      <main className="workspace-main">
+      <main className="workspace-main" id="main-content" tabIndex={-1}>
         <header className="topbar">
           <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setSidebarOpen(true)}><Menu size={19} /></button>
           <div className="breadcrumb"><span>Workspace</span><span className="breadcrumb-separator">/</span><strong>{activeProject?.name ?? "Issues"}</strong></div>
@@ -272,7 +273,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
           </div>}
 
           {view === "dashboard" && activeProject && !loadingProjects && !loadingIssues ? (
-            <DashboardOverview project={activeProject} issues={issues} members={members} />
+            <DashboardOverview project={activeProject} issues={issues} members={members} totalIssues={totalIssues} />
           ) : view === "dashboard" && loadingProjects ? (
             <section className="issues-panel"><div className="loading-state"><span className="loading-spinner" />Loading your dashboard…</div></section>
           ) : view === "dashboard" && !projects.length ? (
@@ -308,6 +309,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
             ) : (
               <div className="issue-table-wrap">
                 <table className="issue-table">
+                  <caption className="sr-only">Issues in {activeProject?.name ?? "the selected project"}</caption>
                   <thead><tr><th>Issue</th><th>Type</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Discussion</th>{canEditIssues && <th>Actions</th>}</tr></thead>
                   <tbody>{issues.map((issue) => {
                     const assignee = members.find((member) => member.user_id === issue.assignee_id);
@@ -326,7 +328,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
             )}
             {totalIssues > 0 && <div className="panel-footer"><span>Showing {offset + 1}–{Math.min(offset + ISSUE_PAGE_SIZE, totalIssues)} of {totalIssues} issues</span><div className="pagination-controls"><button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - ISSUE_PAGE_SIZE))}>Previous</button><span>{Math.floor(offset / ISSUE_PAGE_SIZE) + 1} / {Math.ceil(totalIssues / ISSUE_PAGE_SIZE)}</span><button disabled={offset + ISSUE_PAGE_SIZE >= totalIssues} onClick={() => setOffset(offset + ISSUE_PAGE_SIZE)}>Next</button></div><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
           </section>}
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 11</span></footer>
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 13</span></footer>
         </div>
       </main>
 

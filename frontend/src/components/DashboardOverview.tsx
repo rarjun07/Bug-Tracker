@@ -6,6 +6,7 @@ type Props = {
   project: Project;
   issues: Issue[];
   members: ProjectMember[];
+  totalIssues: number;
 };
 
 const statusLabels: Record<IssueStatus, string> = {
@@ -21,7 +22,7 @@ const priorityLabels: Record<IssuePriority, string> = {
   urgent: "Urgent",
 };
 
-export default function DashboardOverview({ project, issues, members }: Props) {
+export default function DashboardOverview({ project, issues, members, totalIssues }: Props) {
   const statuses: IssueStatus[] = ["todo", "in_progress", "done"];
   const priorities: IssuePriority[] = ["urgent", "high", "medium", "low"];
   const statusCounts = Object.fromEntries(
@@ -31,13 +32,14 @@ export default function DashboardOverview({ project, issues, members }: Props) {
     priorities.map((priority) => [priority, issues.filter((issue) => issue.priority === priority).length]),
   ) as Record<IssuePriority, number>;
   const recentIssues = [...issues].sort((a, b) => b.issue_number - a.issue_number).slice(0, 5);
+  const isSample = totalIssues > issues.length;
 
   return (
     <div className="dashboard-grid">
       <section className="dashboard-card status-card">
         <div className="dashboard-card-heading">
           <span className="dashboard-heading-icon icon-violet"><CircleDashed size={17} /></span>
-          <div><h2>Issue status</h2><p>How work is moving across the project</p></div>
+          <div><h2>Issue status</h2><p>{isSample ? `Based on the latest ${issues.length} issues` : "How work is moving across the project"}</p></div>
         </div>
         <div className="status-breakdown">
           {statuses.map((status) => {
@@ -53,13 +55,13 @@ export default function DashboardOverview({ project, issues, members }: Props) {
             );
           })}
         </div>
-        <div className="dashboard-card-foot"><span>{issues.length} issue{issues.length === 1 ? "" : "s"} total</span><Link to="/issues">View issue list <ArrowRight size={13} /></Link></div>
+        <div className="dashboard-card-foot"><span>{isSample ? `Showing ${issues.length} of ${totalIssues} issues` : `${totalIssues} issue${totalIssues === 1 ? "" : "s"} total`}</span><Link to="/issues">View issue list <ArrowRight size={13} /></Link></div>
       </section>
 
       <section className="dashboard-card priority-card">
         <div className="dashboard-card-heading">
           <span className="dashboard-heading-icon icon-amber"><Flag size={16} /></span>
-          <div><h2>Priority overview</h2><p>Where attention is needed first</p></div>
+          <div><h2>Priority overview</h2><p>{isSample ? `Latest ${issues.length} issues` : "Where attention is needed first"}</p></div>
         </div>
         <div className="priority-breakdown">
           {priorities.map((priority) => (
@@ -70,7 +72,7 @@ export default function DashboardOverview({ project, issues, members }: Props) {
             </div>
           ))}
         </div>
-        <div className="dashboard-card-foot"><span>Urgent and high priority</span><strong>{priorityCounts.urgent + priorityCounts.high}</strong></div>
+        <div className="dashboard-card-foot"><span>{isSample ? "Urgent/high in this sample" : "Urgent and high priority"}</span><strong>{priorityCounts.urgent + priorityCounts.high}</strong></div>
       </section>
 
       <section className="dashboard-card recent-card">
