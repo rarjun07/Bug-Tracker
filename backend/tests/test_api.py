@@ -112,6 +112,14 @@ def test_project_membership_and_issue_crud(client: TestClient) -> None:
     assert updated.json()["status"] == "in_progress"
     assert updated.json()["description"] is None
 
+    comment = client.post(
+        f"/projects/{project_id}/issues/{issue['id']}/comments",
+        json={"content": "I can reproduce this on Safari."},
+        headers=member_headers,
+    )
+    assert comment.status_code == 201
+    assert comment.json()["author_id"] == member["id"]
+
     deleted = client.delete(
         f"/projects/{project_id}/issues/{issue['id']}", headers=owner_headers
     )
@@ -135,3 +143,123 @@ def test_non_member_cannot_read_project_issues(client: TestClient) -> None:
         f"/projects/{project['id']}/issues", headers=outsider_headers
     )
     assert response.status_code == 404
+
+
+def test_issue_search_filters_and_pagination(client: TestClient) -> None:
+    register_user(client, "owner", "owner@example.com")
+    developer = register_user(client, "developer", "developer@example.com")
+    owner_headers = {"Authorization": f"Bearer {login(client, 'owner')}"}
+
+    project = client.post(
+        "/projects", json={"name": "Platform", "key": "PLAT"}, headers=owner_headers
+    ).json()
+    client.post(
+        f"/projects/{project['id']}/members",
+        json={"identity": "developer", "role": "developer"},
+        headers=owner_headers,
+    )
+
+    safari_issue = client.post(
+        f"/projects/{project['id']}/issues",
+        json={
+            "title": "Safari login failure",
+            "description": "Repro steps included",
+            "issue_type": "bug",
+            "priority": "high",
+            "assignee_id": developer["id"],
+        },
+        headers=owner_headers,
+    ).json()
+    password_issue = client.post(
+        f"/projects/{project['id']}/issues",
+        json={"title": "Password reset request", "issue_type": "feature", "priority": "low"},
+        headers=owner_headers,
+    ).json()
+    client.patch(
+        f"/projects/{project['id']}/issues/{safari_issue['id']}",
+        json={"status": "done"},
+        headers=owner_headers,
+    )
+
+    filtered = client.get(
+        f"/projects/{project['id']}/issues",
+        params={
+            "search": "SAFARI",
+            "status": "done",
+            "issue_type": "bug",
+            "priority": "high",
+            "assignee_id": developer["id"],
+            "sort": "oldest",
+        },
+        headers=owner_headers,
+    )
+    assert filtered.status_code == 200
+    assert filtered.headers["x-total-count"] == "1"
+    assert [item["id"] for item in filtered.json()] == [safari_issue["id"]]
+
+    unassigned = client.get(
+        f"/projects/{project['id']}/issues",
+        params={"unassigned": "true", "limit": 1, "sort": "oldest"},
+        headers=owner_headers,
+    )
+    assert unassigned.headers["x-total-count"] == "1"
+    assert [item["id"] for item in unassigned.json()] == [password_issue["id"]]
+
+    paged = client.get(
+        f"/projects/{project['id']}/issues",
+        params={"limit": 1, "offset": 1, "sort": "oldest"},
+        headers=owner_headers,
+    )
+    assert paged.headers["x-total-count"] == "2"
+    assert [item["id"] for item in paged.json()] == [password_issue["id"]]
+
+
+def test_viewers_can_read_but_cannot_modify_issues_or_comments(client: TestClient) -> None:
+    owner = register_user(client, "owner", "owner@example.com")
+    viewer = register_user(client, "viewer", "viewer@example.com")
+    owner_headers = {"Authorization": f"Bearer {login(client, 'owner')}"}
+    viewer_headers = {"Authorization": f"Bearer {login(client, 'viewer')}"}
+
+    project = client.post(
+        "/projects", json={"name": "Platform", "key": "PLAT"}, headers=owner_headers
+    ).json()
+    client.post(
+        f"/projects/{project['id']}/members",
+        json={"identity": "viewer", "role": "viewer"},
+        headers=owner_headers,
+    )
+    issue = client.post(
+        f"/projects/{project['id']}/issues",
+        json={"title": "Read-only issue"},
+        headers=owner_headers,
+    ).json()
+    issue_url = f"/projects/{project['id']}/issues/{issue['id']}"
+    comments_url = f"{issue_url}/comments"
+    comment = client.post(
+        comments_url,
+        json={"content": "Release notes are ready."},
+        headers=owner_headers,
+    )
+    assert comment.status_code == 201
+    assert comment.json()["author_id"] == owner["id"]
+
+    listed = client.get(f"/projects/{project['id']}/issues", headers=viewer_headers)
+    assert listed.status_code == 200
+    visible_comments = client.get(comments_url, headers=viewer_headers).json()
+    assert [item["content"] for item in visible_comments] == ["Release notes are ready."]
+    assert client.post(
+        f"/projects/{project['id']}/issues",
+        json={"title": "Viewer cannot create"},
+        headers=viewer_headers,
+    ).status_code == 403
+    update_attempt = client.patch(issue_url, json={"status": "done"}, headers=viewer_headers)
+    assert update_attempt.status_code == 403
+    delete_attempt = client.delete(issue_url, headers=viewer_headers)
+    assert delete_attempt.status_code == 403
+    assert client.post(
+        comments_url,
+        json={"content": "Viewer cannot comment"},
+        headers=viewer_headers,
+    ).status_code == 403
+    remaining_issue = client.get(issue_url, headers=viewer_headers)
+    assert remaining_issue.status_code == 200

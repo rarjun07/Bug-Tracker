@@ -149,7 +149,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The API tests use a temporary SQLite database and cover registration, login, project membership, issue CRUD, sequential issue keys, and membership boundaries. They do not need the local PostgreSQL container.
+The API tests use a temporary SQLite database and cover registration, login, project membership, issue CRUD, sequential issue keys, membership boundaries, server-side filtering and pagination, and viewer permissions. They do not need the local PostgreSQL container.
 
 ## Day 8: Kanban board
 
@@ -187,6 +187,27 @@ The root `Dockerfile` packages the FastAPI service. Railway detects it automatic
 5. Open `https://<your-backend-domain>/health` and `/health/db`. Both should return `200`; `/health/db` also confirms the managed database connection. `/docs` serves the API reference.
 
 Railway deployment references: [Dockerfiles](https://docs.railway.com/builds/dockerfiles), [pre-deploy commands](https://docs.railway.com/deployments/pre-deploy-command), [healthchecks](https://docs.railway.com/deployments/healthchecks), and [PostgreSQL](https://docs.railway.com/databases/postgresql).
+
+## Day 14: final verification and demo
+
+Run the API checks and build the frontend before presenting:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest
+cd frontend
+npm run build
+```
+
+Suggested demo flow:
+
+1. Register the project admin account, then create a project with `POST /projects` from `/docs`.
+2. Register a developer account in a second browser session and add it to the project with `POST /projects/{project_id}/members` using role `developer`.
+3. Sign in as the admin, create an issue, assign it to the developer, then search and filter it from the Issues page.
+4. Move it across statuses in Kanban, open its discussion, and add a comment.
+5. Add a viewer account, sign in as that user, and show that issues and discussion are readable while editing controls are hidden and write requests are rejected by the API. Use a second browser session for the viewer account too.
+
+The API checks use SQLite for an isolated local database. For a local demo, use the PostgreSQL and app setup in [Run locally](#run-locally). A hosted demo requires completing the Railway setup above and setting `VITE_API_URL` to the backend's public URL.
 
 ## Project layout
 

@@ -328,7 +328,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
             )}
             {totalIssues > 0 && <div className="panel-footer"><span>Showing {offset + 1}–{Math.min(offset + ISSUE_PAGE_SIZE, totalIssues)} of {totalIssues} issues</span><div className="pagination-controls"><button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - ISSUE_PAGE_SIZE))}>Previous</button><span>{Math.floor(offset / ISSUE_PAGE_SIZE) + 1} / {Math.ceil(totalIssues / ISSUE_PAGE_SIZE)}</span><button disabled={offset + ISSUE_PAGE_SIZE >= totalIssues} onClick={() => setOffset(offset + ISSUE_PAGE_SIZE)}>Next</button></div><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
           </section>}
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 13</span></footer>
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 14</span></footer>
         </div>
       </main>
 
