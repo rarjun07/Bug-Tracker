@@ -11,14 +11,17 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Pencil,
   Search,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import api, { apiErrorMessage } from "../api";
 import type { Issue, Project, ProjectMember } from "../types";
 import DashboardOverview from "./DashboardOverview";
 import IssueForm from "./IssueForm";
+import IssueEditForm from "./IssueEditForm";
 import KanbanBoard from "./KanbanBoard";
 import IssueDiscussion from "./IssueDiscussion";
 
@@ -31,10 +34,12 @@ export default function IssueBoard({ view, onLogout }: Props) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [totalIssues, setTotalIssues] = useState(0);
   const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [discussionIssue, setDiscussionIssue] = useState<Issue | null>(null);
+  const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -47,6 +52,17 @@ export default function IssueBoard({ view, onLogout }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const activeProject = projects.find((project) => project.id === projectId) ?? null;
+  const currentMember = members.find((member) => member.user_id === currentUserId);
+  const canEditIssues = currentMember?.role === "admin" || currentMember?.role === "developer";
+  const canDeleteIssues = currentMember?.role === "admin";
+
+  useEffect(() => {
+    let alive = true;
+    api.get<{ id: number }>("/auth/me")
+      .then(({ data }) => alive && setCurrentUserId(data.id))
+      .catch((requestError) => alive && setError(apiErrorMessage(requestError)));
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -75,6 +91,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
       return;
     }
     let alive = true;
+    setMembers([]);
     api.get<ProjectMember[]>(`/projects/${projectId}/members`)
       .then(({ data }) => {
         if (!alive) return;
@@ -137,6 +154,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
   }
 
   async function updateIssueStatus(issueId: number, status: Issue["status"]) {
+    if (!canEditIssues) return;
     const previous = issues.find((issue) => issue.id === issueId);
     if (!previous || previous.status === status) return;
     setIssues((existing) => existing.map((issue) => issue.id === issueId ? { ...issue, status } : issue));
@@ -146,6 +164,25 @@ export default function IssueBoard({ view, onLogout }: Props) {
     } catch (requestError) {
       setIssues((existing) => existing.map((issue) => issue.id === issueId && issue.status === status ? { ...issue, status: previous.status } : issue));
       throw requestError;
+    }
+  }
+
+  function updateIssue(issue: Issue) {
+    setIssues((existing) => existing.map((item) => item.id === issue.id ? issue : item));
+    setEditingIssue(null);
+    setRefreshKey((key) => key + 1);
+  }
+
+  async function deleteIssue(issue: Issue) {
+    if (!canDeleteIssues || !window.confirm(`Delete ${issue.issue_key} “${issue.title}”? This cannot be undone.`)) return;
+    setError("");
+    try {
+      await api.delete(`/projects/${issue.project_id}/issues/${issue.id}`);
+      setTotalIssues((count) => Math.max(0, count - 1));
+      if (issues.length === 1 && offset > 0) setOffset(Math.max(0, offset - ISSUE_PAGE_SIZE));
+      else setRefreshKey((key) => key + 1);
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError));
     }
   }
 
@@ -203,7 +240,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
               <h1>{view === "dashboard" ? "Project dashboard" : view === "kanban" ? "Kanban board" : "Issues"} <span className="heading-count">{totalIssues}</span></h1>
               <p className="page-subtitle">{view === "dashboard" ? "A clear view of your team's work and what's next." : view === "kanban" ? "See every issue and move work through the project." : "Keep the details clear and the work moving."}</p>
             </div>
-            <button className="button button-primary create-button" disabled={!activeProject} onClick={() => setShowForm(true)}><CirclePlus size={17} /> New issue</button>
+            {canEditIssues && <button className="button button-primary create-button" disabled={!activeProject} onClick={() => setShowForm(true)}><CirclePlus size={17} /> New issue</button>}
           </div>
 
           {view === "dashboard" && <div className="summary-grid">
@@ -245,7 +282,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
           ) : view === "kanban" ? (
             <>
               {totalIssues > 100 && <div className="kanban-result-limit">Showing the first 100 of {totalIssues} matching issues. Add filters to narrow the board.</div>}
-              <KanbanBoard issues={issues} members={members} loading={loadingProjects || loadingIssues} onStatusChange={updateIssueStatus} onCreateIssue={() => setShowForm(true)} />
+              <KanbanBoard issues={issues} members={members} loading={loadingProjects || loadingIssues} canEdit={Boolean(canEditIssues)} onStatusChange={updateIssueStatus} onCreateIssue={() => setShowForm(true)} />
             </>
           ) : <section className="issues-panel">
             <div className="panel-header">
@@ -266,12 +303,12 @@ export default function IssueBoard({ view, onLogout }: Props) {
                 <span className="empty-icon"><ClipboardList size={22} /></span>
                 <h3>{hasActiveFilters ? "No matching issues" : "A clean slate"}</h3>
                 <p>{hasActiveFilters ? "Try changing or clearing your filters." : "Create the first issue for this project and give the work a clear starting point."}</p>
-                {!hasActiveFilters && <button className="button button-secondary" onClick={() => setShowForm(true)}><CirclePlus size={16} /> Create first issue</button>}
+                {!hasActiveFilters && canEditIssues && <button className="button button-secondary" onClick={() => setShowForm(true)}><CirclePlus size={16} /> Create first issue</button>}
               </div>
             ) : (
               <div className="issue-table-wrap">
                 <table className="issue-table">
-                  <thead><tr><th>Issue</th><th>Type</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Discussion</th></tr></thead>
+                  <thead><tr><th>Issue</th><th>Type</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Discussion</th>{canEditIssues && <th>Actions</th>}</tr></thead>
                   <tbody>{issues.map((issue) => {
                     const assignee = members.find((member) => member.user_id === issue.assignee_id);
                     return <tr key={issue.id}>
@@ -281,6 +318,7 @@ export default function IssueBoard({ view, onLogout }: Props) {
                       <td><span className={`priority-label priority-${issue.priority}`}><i />{issue.priority}</span></td>
                       <td>{assignee ? <span className="assignee-cell"><span className="mini-avatar">{assignee.username.slice(0, 1).toUpperCase()}</span>{assignee.username}</span> : <span className="unassigned">Unassigned</span>}</td>
                       <td><button className="discussion-open-button" onClick={() => setDiscussionIssue(issue)}><MessageSquare size={14} /> Open</button></td>
+                      {canEditIssues && <td><div className="issue-row-actions"><button className="issue-row-action" aria-label={`Edit ${issue.issue_key}`} title="Edit issue" onClick={() => setEditingIssue(issue)}><Pencil size={14} /></button>{canDeleteIssues && <button className="issue-row-action issue-row-delete" aria-label={`Delete ${issue.issue_key}`} title="Delete issue" onClick={() => void deleteIssue(issue)}><Trash2 size={14} /></button>}</div></td>}
                     </tr>;
                   })}</tbody>
                 </table>
@@ -288,12 +326,13 @@ export default function IssueBoard({ view, onLogout }: Props) {
             )}
             {totalIssues > 0 && <div className="panel-footer"><span>Showing {offset + 1}–{Math.min(offset + ISSUE_PAGE_SIZE, totalIssues)} of {totalIssues} issues</span><div className="pagination-controls"><button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - ISSUE_PAGE_SIZE))}>Previous</button><span>{Math.floor(offset / ISSUE_PAGE_SIZE) + 1} / {Math.ceil(totalIssues / ISSUE_PAGE_SIZE)}</span><button disabled={offset + ISSUE_PAGE_SIZE >= totalIssues} onClick={() => setOffset(offset + ISSUE_PAGE_SIZE)}>Next</button></div><span className="footer-project"><span className="footer-project-dot" /> {activeProject?.key}</span></div>}
           </section>}
-          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 10</span></footer>
+          <footer className="page-footer"><span>Built for thoughtful teamwork.</span><span>Bug Tracker <span className="footer-divider">·</span> Day 11</span></footer>
         </div>
       </main>
 
       {showForm && activeProject && <IssueForm project={activeProject} members={members} onClose={() => setShowForm(false)} onCreated={addIssue} />}
-      {discussionIssue && <IssueDiscussion issue={discussionIssue} onClose={() => setDiscussionIssue(null)} />}
+      {editingIssue && activeProject && <IssueEditForm issue={editingIssue} project={activeProject} members={members} onClose={() => setEditingIssue(null)} onUpdated={updateIssue} />}
+      {discussionIssue && <IssueDiscussion issue={discussionIssue} canComment={Boolean(canEditIssues)} onClose={() => setDiscussionIssue(null)} />}
     </div>
   );
 }

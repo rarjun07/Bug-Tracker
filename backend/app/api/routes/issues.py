@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import String, cast, func, or_, select, update
 from sqlalchemy.orm import contains_eager
 
-from app.api.deps import CurrentUser, DbSession, ProjectMemberAccess
+from app.api.deps import CurrentUser, DbSession, ProjectAdmin, ProjectMemberAccess
 from app.models.comment import IssueComment
 from app.models.issue import Issue
 from app.models.project import Project, ProjectMember
@@ -73,6 +73,14 @@ def _ensure_assignee_is_member(db: DbSession, project_id: int, assignee_id: int 
         )
 
 
+def _ensure_issue_editor(project_member: ProjectMember) -> None:
+    if project_member.role not in {"admin", "developer"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or developer role required to modify issues",
+        )
+
+
 @router.post("", response_model=IssueRead, status_code=status.HTTP_201_CREATED)
 def create_issue(
     issue_in: IssueCreate,
@@ -81,6 +89,7 @@ def create_issue(
     db: DbSession,
 ) -> IssueRead:
     project_id = project_member.project_id
+    _ensure_issue_editor(project_member)
     _ensure_assignee_is_member(db, project_id, issue_in.assignee_id)
 
     # Increment in the database so concurrent creates receive distinct project issue numbers.
@@ -183,6 +192,7 @@ def update_issue(
     project_member: ProjectMemberAccess,
     db: DbSession,
 ) -> IssueRead:
+    _ensure_issue_editor(project_member)
     issue = _get_issue(db, project_member.project_id, issue_id)
     changes = issue_update.model_dump(exclude_unset=True)
 
@@ -216,7 +226,7 @@ def update_issue(
 
 @router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_issue(
-    issue_id: int, project_member: ProjectMemberAccess, db: DbSession
+    issue_id: int, project_member: ProjectAdmin, db: DbSession
 ) -> Response:
     issue = _get_issue(db, project_member.project_id, issue_id)
     db.delete(issue)
@@ -249,6 +259,7 @@ def create_issue_comment(
     current_user: CurrentUser,
     db: DbSession,
 ) -> IssueCommentRead:
+    _ensure_issue_editor(project_member)
     _get_issue(db, project_member.project_id, issue_id)
     if comment_in.parent_id is not None:
         parent = db.scalar(

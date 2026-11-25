@@ -133,6 +133,11 @@ a { color: inherit; text-decoration: none; }
 .issue-table tbody tr:hover { background: #fcfcff; }
 .discussion-open-button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #e8eaf1; border-radius: 6px; padding: 6px 8px; color: #6975d8; background: #fff; font-size: 9px; font-weight: 600; }
 .discussion-open-button:hover { border-color: #cfd3fa; background: #f7f7ff; }
+.issue-row-actions { display: flex; align-items: center; gap: 5px; }
+.issue-row-action { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #e8eaf1; border-radius: 6px; color: #6875d8; background: #fff; cursor: pointer; }
+.issue-row-action:hover { border-color: #cfd3fa; background: #f7f7ff; }
+.issue-row-delete { color: #c55e5b; }
+.issue-row-delete:hover { border-color: #f0c9c6; background: #fff5f4; }
 .issue-title-cell { display: flex; align-items: center; gap: 10px; min-width: 250px; }
 .issue-type-mark { width: 27px; height: 27px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 7px; }
 .type-bug { color: #d16f67; background: #fff0ee; }
@@ -291,6 +296,7 @@ a { color: inherit; text-decoration: none; }
 .discussion-empty { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #9aa3b4; font-size: 10px; }
 .discussion-empty svg { color: #7883df; }
 .discussion-empty strong { color: #59647e; font-size: 11px; }
+.discussion-readonly { border-top: 1px solid #edf0f4; padding: 13px 3px 2px; color: #929bad; font-size: 10px; }
 .comment-thread { border-bottom: 1px solid #f0f1f5; padding: 10px 0 12px; }
 .comment-bubble { display: flex; align-items: flex-start; gap: 10px; }
 .comment-reply { margin: 11px 0 0 37px; border-left: 2px solid #e9ebf6; padding-left: 12px; }

@@ -3,7 +3,7 @@ import { MessageSquare, Send, X } from "lucide-react";
 import api, { apiErrorMessage } from "../api";
 import type { Issue, IssueComment } from "../types";
 
-export default function IssueDiscussion({ issue, onClose }: { issue: Issue; onClose: () => void }) {
+export default function IssueDiscussion({ issue, canComment, onClose }: { issue: Issue; canComment: boolean; onClose: () => void }) {
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<IssueComment | null>(null);
@@ -48,27 +48,27 @@ export default function IssueDiscussion({ issue, onClose }: { issue: Issue; onCl
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="issue-modal discussion-modal" role="dialog" aria-modal="true" aria-labelledby="discussion-title">
         <header className="modal-header">
-          <div><span className="eyebrow">{issue.issue_key} · TEAM DISCUSSION</span><h2 id="discussion-title">{issue.title}</h2><p>Share updates and reply to your teammates.</p></div>
+          <div><span className="eyebrow">{issue.issue_key} · TEAM DISCUSSION</span><h2 id="discussion-title">{issue.title}</h2><p>{canComment ? "Share updates and reply to your teammates." : "Read the discussion for this issue."}</p></div>
           <button className="icon-button modal-close" aria-label="Close discussion" onClick={onClose}><X size={18} /></button>
         </header>
         <div className="discussion-list" aria-live="polite">
           {loading ? <div className="loading-state"><span className="loading-spinner" />Loading discussion…</div> : roots.length === 0 ? (
-            <div className="discussion-empty"><MessageSquare size={19} /><strong>No comments yet</strong><span>Start a conversation about this issue.</span></div>
+            <div className="discussion-empty"><MessageSquare size={19} /><strong>No comments yet</strong><span>{canComment ? "Start a conversation about this issue." : "There are no updates to read yet."}</span></div>
           ) : roots.map((comment) => (
             <article className="comment-thread" key={comment.id}>
               <CommentBubble comment={comment} />
               {comments.filter((reply) => reply.parent_id === comment.id).map((reply) => <CommentBubble comment={reply} key={reply.id} reply />)}
-              <button className="comment-reply-button" onClick={() => { setReplyTo(comment); setContent(""); }}>Reply</button>
+              {canComment && <button className="comment-reply-button" onClick={() => { setReplyTo(comment); setContent(""); }}>Reply</button>}
             </article>
           ))}
         </div>
         {error && <div className="notice notice-error modal-notice" role="alert">{error}</div>}
-        <form className="comment-composer" onSubmit={submit}>
+        {canComment ? <form className="comment-composer" onSubmit={submit}>
           {replyTo && <div className="reply-context"><span>Replying to {replyTo.author_username}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply"><X size={14} /></button></div>}
           <label className="sr-only" htmlFor="comment-content">Write a comment</label>
           <textarea id="comment-content" value={content} maxLength={5000} rows={3} placeholder={replyTo ? "Write a reply…" : "Write a comment…"} onChange={(event) => setContent(event.target.value)} />
           <div className="comment-composer-footer"><span>{content.length}/5000</span><button className="button button-primary" disabled={!content.trim() || saving || loading}>{saving ? "Sending…" : <><Send size={14} /> Send {replyTo ? "reply" : "comment"}</>}</button></div>
-        </form>
+        </form> : <div className="discussion-readonly">Your project role is read only.</div>}
       </section>
     </div>
   );

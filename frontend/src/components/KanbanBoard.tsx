@@ -15,17 +15,18 @@ type Props = {
   issues: Issue[];
   members: ProjectMember[];
   loading: boolean;
+  canEdit: boolean;
   onStatusChange: (issueId: number, status: IssueStatus) => Promise<void>;
   onCreateIssue: () => void;
 };
 
-export default function KanbanBoard({ issues, members, loading, onStatusChange, onCreateIssue }: Props) {
+export default function KanbanBoard({ issues, members, loading, canEdit, onStatusChange, onCreateIssue }: Props) {
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [error, setError] = useState("");
 
   async function changeStatus(issueId: number, status: IssueStatus) {
     const issue = issues.find((item) => item.id === issueId);
-    if (!issue || issue.status === status || updatingIds.includes(issueId)) return;
+    if (!canEdit || !issue || issue.status === status || updatingIds.includes(issueId)) return;
     setUpdatingIds((current) => [...current, issueId]);
     setError("");
     try {
@@ -48,8 +49,8 @@ export default function KanbanBoard({ issues, members, loading, onStatusChange, 
     }}>
       <section className="kanban-panel" aria-label="Issue board">
         <div className="kanban-header">
-          <div><h2>Kanban board</h2><p>Drag an issue to update its status, or use the status menu on a card.</p></div>
-          <button className="button button-secondary kanban-create" onClick={onCreateIssue}>+ New issue</button>
+          <div><h2>Kanban board</h2><p>{canEdit ? "Drag an issue to update its status, or use the status menu on a card." : "Browse the project issues and their current status."}</p></div>
+          {canEdit && <button className="button button-secondary kanban-create" onClick={onCreateIssue}>+ New issue</button>}
         </div>
         {error && <div className="notice notice-error kanban-notice" role="alert">{error}</div>}
         {loading ? <div className="loading-state"><span className="loading-spinner" />Loading issues…</div> : (
@@ -61,13 +62,14 @@ export default function KanbanBoard({ issues, members, loading, onStatusChange, 
                 issues={issues.filter((issue) => issue.status === column.id)}
                 members={members}
                 updatingIds={updatingIds}
+                canEdit={canEdit}
                 onStatusChange={changeStatus}
               />
             ))}
           </div>
         )}
-        {!loading && issues.length === 0 && <div className="kanban-empty"><Bug size={18} /><span>No issues yet. Create one to start the board.</span></div>}
-        <div className="kanban-hint"><GripVertical size={14} /> Drag cards between columns to update issue status.</div>
+        {!loading && issues.length === 0 && <div className="kanban-empty"><Bug size={18} /><span>{canEdit ? "No issues yet. Create one to start the board." : "No issues yet. Ask a project admin or developer to create one."}</span></div>}
+        {canEdit && <div className="kanban-hint"><GripVertical size={14} /> Drag cards between columns to update issue status.</div>}
       </section>
     </DragDropProvider>
   );
