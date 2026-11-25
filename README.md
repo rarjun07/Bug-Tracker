@@ -101,6 +101,27 @@ python -m pytest
 
 The API tests use a temporary SQLite database and cover registration, login, project membership, issue CRUD, sequential issue keys, and membership boundaries. They do not need the local PostgreSQL container.
 
+## Day 12: deploy the backend to Railway
+
+The root `Dockerfile` packages the FastAPI service. Railway detects it automatically when the repository is deployed as a service. The container listens on Railway's `PORT`, runs as a non-root user, and accepts both Railway's standard PostgreSQL URLs and the local `postgresql+psycopg://` URL.
+
+1. In Railway, create a project from the `rarjun07/Bug-Tracker` GitHub repository and add a PostgreSQL service. If you name the database service something other than `Postgres`, use that service name in the variable reference below.
+2. Add these variables to the backend service:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `JWT_SECRET_KEY` | A new secret from `openssl rand -hex 32` |
+   | `APP_ENV` | `production` |
+   | `FRONTEND_ORIGIN` | The exact deployed frontend origin, such as `https://your-app.example` |
+
+   Keep secrets in Railway variables; do not commit them to this repository. For local browser access while developing, `FRONTEND_ORIGIN` can contain comma-separated origins such as `https://your-app.example,http://localhost:5173`.
+3. Set the backend service's pre-deploy command to `alembic -c backend/alembic.ini upgrade head`. Railway runs it before the new application starts; a failed migration stops that deployment.
+4. Set the healthcheck path to `/health`, then generate a public domain in the service's Networking settings.
+5. Open `https://<your-backend-domain>/health` and `/health/db`. Both should return `200`; `/health/db` also confirms the managed database connection. `/docs` serves the API reference.
+
+Railway deployment references: [Dockerfiles](https://docs.railway.com/builds/dockerfiles), [pre-deploy commands](https://docs.railway.com/deployments/pre-deploy-command), [healthchecks](https://docs.railway.com/deployments/healthchecks), and [PostgreSQL](https://docs.railway.com/databases/postgresql).
+
 ## Project layout
 
 ```text
@@ -114,4 +135,5 @@ backend/app/
 backend/alembic/ database migration history
 frontend/     React + TypeScript + Vite issue workspace
 compose.yaml  local PostgreSQL service
+Dockerfile   production FastAPI container
 ```
